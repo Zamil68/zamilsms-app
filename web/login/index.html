@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZAMIL SMS — Login</title>
+    <link rel="icon" type="image/x-icon" href="/branding/favicon.ico">
+    <link rel="stylesheet" href="/login/common.css">
+    <link rel="stylesheet" href="/login/login.css?v=20260806">
+</head>
+<body>
+<script>
+(function(){
+  try{
+    var s = localStorage.getItem('app_session');
+    if(!s) return;
+    var ctrl = new AbortController(); var t = setTimeout(function(){ ctrl.abort(); }, 5000);
+    fetch('/api/ping', { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({session:s}), cache:'no-store', signal: ctrl.signal })
+      .then(function(r){ clearTimeout(t); return r.json(); })
+      .then(function(d){ if(d && d.ok){ location.replace('/dashboard'); } else { localStorage.removeItem('app_session'); } })
+      .catch(function(){ clearTimeout(t); });
+  }catch(e){}
+})();
+</script>
+
+    <div id="loginScreen">
+       <div class="login-card">
+
+            <div class="mascot" id="mascot" data-mood="happy" aria-hidden="true">
+              <svg viewBox="0 0 140 140">
+                <defs>
+                  <linearGradient id="mFace" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a5f3fc"/><stop offset="1" stop-color="#67e8f9"/></linearGradient>
+                  <linearGradient id="mCrown" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+                </defs>
+                <path class="m-crown" d="M47 32 L54 14 L64 26 L70 10 L76 26 L86 14 L93 32 Z"/>
+                <circle class="m-face" cx="70" cy="80" r="46"/>
+                <circle class="m-cheek" cx="50" cy="92" r="6"/>
+                <circle class="m-cheek" cx="90" cy="92" r="6"/>
+                <g class="m-eye"><circle cx="54" cy="74" r="8" fill="#fff"/><circle class="m-pupil" cx="54" cy="75" r="3.6" fill="#083344"/></g>
+                <g class="m-eye"><circle cx="86" cy="74" r="8" fill="#fff"/><circle class="m-pupil" cx="86" cy="75" r="3.6" fill="#083344"/></g>
+                <path class="m-brow" d="M46 62 L60 66"/>
+                <path class="m-brow" d="M94 62 L80 66"/>
+                <path class="m-mouth happy" d="M56 94 Q70 106 84 94"/>
+                <path class="m-mouth sad" d="M56 102 Q70 92 84 102"/>
+                <circle class="m-tear" cx="54" cy="84" r="3"/>
+                <g class="m-hand"><circle cx="54" cy="74" r="12"/></g>
+                <g class="m-hand"><circle cx="86" cy="74" r="12"/></g>
+              </svg>
+            </div>
+
+            <div class="login-brand">
+                <img src="/branding/logo-dark.png" alt="ZAMIL SMS" class="login-logo-svg header-logo-dark">
+                <img src="/branding/logo-light.png" alt="ZAMIL SMS" class="login-logo-svg header-logo-light">
+            </div>
+            <div class="login-sub">Sign in to your account</div>
+            <div class="lamix-badge"><div class="lamix-badge-icon">⚡</div><span>Connected to LaMix Network</span></div>
+            <div id="loginErr" class="err-box"></div>
+
+            <div id="loginForm">
+                <div class="field"><label for="inpUser">Username</label>
+                    <input type="text" id="inpUser" autocomplete="username" placeholder="Enter your username"></div>
+                <div class="field"><label for="inpPass">Password</label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="inpPass" autocomplete="current-password" placeholder="Enter your password">
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('inpPass',this)" aria-label="Show or hide password">
+                            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg class="eye-shut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
+                    <div id="capsHint" class="caps-hint">⚠ Caps Lock is ON</div>
+                </div>
+                <button id="btnLogin" class="btn btn-primary" onclick="doLogin()">
+                    <span id="loginSpinner" class="spinner" style="display:none"></span>
+                    <span id="loginBtnText">Sign In</span> →
+                </button>
+                <div style="text-align:center;margin-top:12px">
+                    <a href="javascript:void(0)" onclick="showForgot()" style="font-size:.76rem;color:var(--accent);font-weight:600;text-decoration:none">Forgot password?</a>
+                </div>
+                <div class="login-foot">Encrypted · Your data is protected end-to-end</div>
+            </div>
+
+            <div id="setPassPanel" style="display:none">
+                <div class="panel-title">🔐 Activate your account</div>
+                <div class="panel-sub">Welcome <b id="spUser"></b>! Set your Zamil SMS password.</div>
+                <div class="field"><label>New Password</label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="spNew" placeholder="Min 6 characters">
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('spNew',this)" aria-label="Show or hide password">
+                            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg class="eye-shut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="pwd-pop" id="spPop">
+                    <div class="pwd-pop-t">Password checklist</div>
+                    <div class="pwd-chk len"><span class="tick"></span>At least 6 characters</div>
+                    <div class="pwd-chk match"><span class="tick"></span>Confirm matches password</div>
+                    <div class="pwd-strength"><i></i></div>
+                </div>
+                <div class="field"><label>Confirm Password</label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="spConfirm" placeholder="Repeat password">
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('spConfirm',this)" aria-label="Show or hide password">
+                            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg class="eye-shut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="field"><label>Recovery Code</label>
+                    <input type="text" id="spRecovery" placeholder="A secret code to reset your password later">
+                    <div class="rec-hint">🔒 Write this code down &amp; keep it safe — it is the ONLY way to reset your password later. Not even admin can recover it.</div>
+                </div>
+                <button class="btn btn-primary" onclick="submitSetPassword()">Activate &amp; Sign In →</button>
+                <div style="text-align:center;margin-top:10px"><a href="javascript:void(0)" onclick="backToLogin()" class="back-link">← Back to login</a></div>
+            </div>
+
+            <div id="forgotPanel" style="display:none">
+                <div class="panel-title">🔑 Reset your password</div>
+                <div class="panel-sub">Enter your username, recovery code, and a new password.</div>
+                <div class="field"><label>Username</label><input type="text" id="fpUser" placeholder="Your username"></div>
+                <div class="field"><label>Recovery Code</label>
+                    <input type="text" id="fpRecovery" placeholder="The code you set">
+                    <div class="rec-hint">🔑 This is the secret code you will need to reset password.</div>
+                </div>
+                <div class="field"><label>New Password</label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="fpNew" placeholder="Min 6 characters">
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('fpNew',this)" aria-label="Show or hide password">
+                            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg class="eye-shut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="pwd-pop" id="fpPop">
+                    <div class="pwd-pop-t">Password checklist</div>
+                    <div class="pwd-chk len"><span class="tick"></span>At least 6 characters</div>
+                    <div class="pwd-chk match"><span class="tick"></span>Confirm matches password</div>
+                    <div class="pwd-strength"><i></i></div>
+                </div>
+                <div class="field"><label>Confirm New Password</label>
+                    <div class="pwd-wrap">
+                        <input type="password" id="fpConfirm" placeholder="Repeat password">
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('fpConfirm',this)" aria-label="Show or hide password">
+                            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg class="eye-shut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="submitForgot()">Reset Password →</button>
+                <div style="text-align:center;margin-top:10px">
+                    <a href="javascript:void(0)" onclick="backToLogin()" class="back-link">← Back to login</a>
+                    &nbsp;·&nbsp;
+                    <a href="" target="_blank" class="wa-link">Lost code? WhatsApp admin</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner" style="width:32px;height:32px;border-width:3px"></div>
+        <div id="loadingText" class="loading-text">Loading…</div>
+    </div>
+
+   <script src="/login/providers.js"></script>
+<script src="/login/utils.js"></script>
+<script src="/login/api.js"></script>
+<script src="/login/auth.js"></script>
+
+<script>
+document.getElementById('inpPass').addEventListener('keyup', function(e) {
+    var isCaps = (e.getModifierState && e.getModifierState('CapsLock')) || false;
+    document.getElementById('capsHint').classList.toggle('show', isCaps);
+});
+</script>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  var m=$('mascot');
+  window.setMascotMood=function(x){ if(m) m.setAttribute('data-mood',x); };
+  var u=$('inpUser');
+  if(u){
+    u.addEventListener('focus',function(){setMascotMood('typing');});
+    u.addEventListener('input',function(){setMascotMood('typing');});
+    u.addEventListener('blur',function(){setMascotMood('happy');});
+  }
+  document.querySelectorAll('input[type="password"]').forEach(function(i){
+    i.addEventListener('focus',function(){setMascotMood('peek');});
+    i.addEventListener('blur',function(){setMascotMood('happy');});
+  });
+  window.togglePwd=function(id,btn){
+    var i=$(id); if(!i) return;
+    var on=(i.type==='password');
+    i.type=on?'text':'password';
+    if(btn) btn.classList.toggle('on',on);
+  };
+  function strength(v){var s=0;if(v.length>=6)s++;if(v.length>=10)s++;if(/[0-9]/.test(v)&&/[a-zA-Z]/.test(v))s++;return s;}
+  function paintPop(pop,nv,cv){
+    if(!pop) return;
+    pop.querySelector('.pwd-chk.len').classList.toggle('ok',nv.length>=6);
+    pop.querySelector('.pwd-chk.match').classList.toggle('ok',cv.length>0&&nv===cv);
+    var bar=pop.querySelector('.pwd-strength i');
+    if(bar){var s=strength(nv);bar.style.width=(nv?(s/3*100):0)+'%';bar.className=s>=3?'s3':(s===2?'s2':'s1');}
+  }
+  function bindPair(nid,cid,pid){
+    var n=$(nid),c=$(cid),pop=$(pid);
+    function show(on){ if(pop) pop.classList.toggle('show',on); }
+    function upd(){ paintPop(pop,n.value,c.value); }
+    if(n){n.addEventListener('focus',function(){show(true);upd();});n.addEventListener('input',upd);n.addEventListener('blur',function(){setTimeout(function(){if(document.activeElement!==c)show(false);},120);});}
+    if(c){c.addEventListener('focus',function(){show(true);upd();});c.addEventListener('input',upd);c.addEventListener('blur',function(){setTimeout(function(){if(document.activeElement!==n)show(false);},120);});}
+  }
+  bindPair('spNew','spConfirm','spPop');
+  bindPair('fpNew','fpConfirm','fpPop');
+})();
+</script>
+
+<script>
+    (function(){
+      var _pending = null;
+      function $(id){ return document.getElementById(id); }
+      function showErr(msg){ var e=$('loginErr'); e.textContent=msg; e.classList.add('show');
+        try{ if(window.setMascotMood){ setMascotMood('sad'); clearTimeout(window._moodT); window._moodT=setTimeout(function(){setMascotMood('happy');},2600);} }catch(err){}
+      }
+      function hideErr(){ var e=$('loginErr'); e.textContent=''; e.classList.remove('show'); }
+      function busy(on){ var s=$('loginSpinner'), b=$('btnLogin'); if(s)s.style.display=on?'inline-block':'none'; if(b)b.disabled=on; }
+      function go(d, fallbackUser){
+        try{ window.setMascotMood && setMascotMood('party'); }catch(e){}
+        localStorage.setItem('app_session', d.session);
+        localStorage.setItem('app_username', d.username || fallbackUser);
+        if(d.clientId) localStorage.setItem('app_client_id', String(d.clientId));
+        if(d.clientName) localStorage.setItem('app_client_name', String(d.clientName));
+        setTimeout(function(){ location.replace(d.redirect || '/dashboard/dashboard.html'); }, 450);
+      }
+
+      window.doLogin = function(){
+        hideErr();
+        var u=$('inpUser').value.trim(), p=$('inpPass').value;
+        if(!u||!p){ showErr('Enter username and password'); return; }
+        busy(true);
+        fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+          .then(function(r){return r.json();}).then(function(d){
+            busy(false);
+            if(d && d.firstLogin){ _pending={username:d.username,clientId:d.clientId,clientName:d.clientName}; $('spUser').textContent=d.username; $('loginForm').style.display='none'; $('setPassPanel').style.display='block'; return; }
+            if(d && (d.ok||d.success) && d.session){ go(d, u); return; }
+            showErr((d&&d.error)||'Login failed');
+          }).catch(function(){ busy(false); showErr('Connection error. Try again.'); });
+      };
+
+      window.submitSetPassword = function(){
+        hideErr();
+        var p1=$('spNew').value, p2=$('spConfirm').value, rc=$('spRecovery').value.trim();
+        if(!p1||p1.length<6){ showErr('Password must be at least 6 characters'); return; }
+        if(p1!==p2){ showErr('Passwords do not match'); return; }
+        if(!rc||rc.length<4){ showErr('Set a recovery code (min 4 chars)'); return; }
+        busy(true);
+        fetch('/api/auth/set-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:_pending.username,clientId:_pending.clientId,clientName:_pending.clientName,password:p1,recovery:rc})})
+          .then(function(r){return r.json();}).then(function(d){ busy(false); if(d&&d.ok&&d.session){ go(d, _pending.username); } else showErr((d&&d.error)||'Could not set password'); })
+          .catch(function(){ busy(false); showErr('Connection error'); });
+      };
+
+      window.showForgot = function(){ hideErr(); $('loginForm').style.display='none'; $('forgotPanel').style.display='block'; };
+      window.backToLogin = function(){ hideErr(); $('setPassPanel').style.display='none'; $('forgotPanel').style.display='none'; $('loginForm').style.display='block'; };
+      window.submitForgot = function(){
+        hideErr();
+        var u=$('fpUser').value.trim(), rc=$('fpRecovery').value.trim(), p1=$('fpNew').value, p2=$('fpConfirm').value;
+        if(!u||!rc||!p1){ showErr('Fill all fields'); return; }
+        if(p1.length<6){ showErr('Password must be at least 6 characters'); return; }
+        if(p1!==p2){ showErr('Passwords do not match'); return; }
+        busy(true);
+        fetch('/api/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,recovery:rc,newPassword:p1})})
+          .then(function(r){return r.json();}).then(function(d){ busy(false); if(d&&d.ok){ try{setMascotMood('party');}catch(e){} setTimeout(function(){ alert('Password reset! You can now sign in.'); backToLogin(); },400); } else showErr((d&&d.error)||'Reset failed'); })
+          .catch(function(){ busy(false); showErr('Connection error'); });
+      };
+    })();
+    </script>
+
+<script>
+/* ══ LOGIN FX v2 — Dev: Muhammad Muzammil Aziz ══ */
+(function(){
+  var M = document.querySelector('.mascot');
+  var CARD = document.querySelector('.login-card');
+  if (!M) return;
+  /* ambient floating emojis */
+  var EMO = ['⚡','📨','✨','👑',''];
+  for (var i = 0; i < 6; i++) {
+    var s = document.createElement('span');
+    s.className = 'zfloat'; s.textContent = EMO[i % EMO.length];
+    s.style.left = (6 + Math.random() * 86) + 'vw';
+    s.style.top = (6 + Math.random() * 80) + 'vh';
+    s.style.fontSize = (14 + Math.random() * 14) + 'px';
+    s.style.animationDelay = (Math.random() * 4) + 's';
+    s.style.animationDuration = (6 + Math.random() * 4) + 's';
+    document.body.appendChild(s);
+  }
+  /* pupils follow finger / mouse */
+  var pupils = M.querySelectorAll('.m-pupil');
+  document.addEventListener('pointermove', function (e) {
+    var r = M.getBoundingClientRect();
+    var dx = Math.max(-3, Math.min(3, (e.clientX - (r.left + r.width / 2)) / 40));
+    var dy = Math.max(-2, Math.min(3, (e.clientY - (r.top + r.height / 2)) / 40));
+    pupils.forEach(function (p) { p.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; });
+  }, { passive: true });
+  /* confetti burst + crown shake */
+  function burst() {
+    if (CARD) { CARD.classList.remove('party'); void CARD.offsetWidth; CARD.classList.add('party'); }
+    var r = M.getBoundingClientRect(), SET = ['🎉','','👑','✨','💙','🎊'];
+    for (var i = 0; i < 14; i++) {
+      var c = document.createElement('span');
+      c.className = 'zconf'; c.textContent = SET[i % SET.length];
+      c.style.left = (r.left + r.width / 2 + (Math.random() * 170 - 85)) + 'px';
+      c.style.top = (r.top + r.height * 0.3 + (Math.random() * 44 - 22)) + 'px';
+      c.style.animationDelay = (Math.random() * 0.25) + 's';
+      document.body.appendChild(c);
+      (function (el) { setTimeout(function () { el.remove(); }, 1500); })(c);
+    }
+  }
+  /* watch mood → party = success */
+  var last = M.getAttribute('data-mood');
+  new MutationObserver(function () {
+    var m = M.getAttribute('data-mood');
+    if (m === 'party' && last !== 'party') burst();
+    last = m;
+  }).observe(M, { attributes: true, attributeFilter: ['data-mood'] });
+  /* peek while typing */
+  var ins = document.querySelectorAll('#loginScreen .field input');
+  ins.forEach(function (inp) {
+    inp.addEventListener('focus', function () { if (last !== 'sad' && last !== 'party') M.setAttribute('data-mood', 'peek'); });
+    inp.addEventListener('blur', function () { if (last !== 'sad' && last !== 'party') M.removeAttribute('data-mood'); });
+  });
+  /* on Sign In tap (valid fields) → party mood (crown shake + confetti) */
+  var btn = document.querySelector('.btn.btn-primary');
+  if (btn) btn.addEventListener('click', function () {
+    var u = ins[0], p = ins[1];
+    if (!u || !p || !u.value.trim() || !p.value) return;
+    setTimeout(function () {
+      var prev = M.getAttribute('data-mood');
+      if (prev === 'sad') return;              // wrong password → keep sad face
+      if (prev === 'party') burst(); else M.setAttribute('data-mood', 'party');
+    }, 700);
+  }, true);
+})();
+</script>
+    
+</body>
+</html>

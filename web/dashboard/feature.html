@@ -1,0 +1,186 @@
+<!-- ═════════════════════════════════════════════════════════
+     ZAMIL SMS — feature.html (admin features, injected into #featureRoot)
+     Dev: Muhammad Muzammil Aziz
+     ═════════════════════════════════════════════════════════ -->
+<style>
+/* ══ FEATURE UI v2 — flex cards + SVG design system ══ */
+.fx-wrap{max-width:600px;margin:0 auto;padding:14px 14px 46px}
+.fx-head{display:flex;align-items:center;gap:10px;padding:6px 0 14px}
+.fx-back{width:38px;height:38px;flex-shrink:0;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s,border-color .15s}
+.fx-back:hover{border-color:var(--accent)}
+.fx-back:active{transform:scale(.9)}
+.fx-back svg{width:17px;height:17px}
+.fx-badge{width:40px;height:40px;flex-shrink:0;border-radius:13px;display:flex;align-items:center;justify-content:center;border:1px solid transparent}
+.fx-badge svg{width:19px;height:19px}
+.fx-h-cyan{color:#0e7490;background:linear-gradient(135deg,rgba(8,145,178,.16),rgba(8,145,178,.06));border-color:rgba(8,145,178,.28)}
+.fx-h-purple{color:#6d28d9;background:linear-gradient(135deg,rgba(124,92,255,.16),rgba(124,92,255,.06));border-color:rgba(124,92,255,.28)}
+.fx-h-green{color:#047857;background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(16,185,129,.06));border-color:rgba(16,185,129,.28)}
+.fx-h-amber{color:#b45309;background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(251,191,36,.06));border-color:rgba(251,191,36,.3)}
+.fx-h-rose{color:#be123c;background:linear-gradient(135deg,rgba(244,63,94,.14),rgba(244,63,94,.05));border-color:rgba(244,63,94,.26)}
+[data-theme="dark"] .fx-h-cyan{color:#67e8f9}[data-theme="dark"] .fx-h-purple{color:#c4b5fd}
+[data-theme="dark"] .fx-h-green{color:#6ee7b7}[data-theme="dark"] .fx-h-amber{color:#fde68a}
+[data-theme="dark"] .fx-h-rose{color:#fda4af}
+.fx-tt{flex:1;min-width:0}
+.fx-title{font-family:'Space Grotesk',sans-serif;font-size:1.06rem;font-weight:700;letter-spacing:-.015em;color:var(--text);line-height:1.2}
+.fx-sub{font-size:.66rem;color:var(--muted);font-weight:600;margin-top:2px}
+.fx-actions{display:flex;gap:6px;flex-shrink:0}
+.fx-ibtn{width:36px;height:36px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.fx-ibtn:hover{color:var(--accent);border-color:var(--accent)}
+.fx-ibtn:active{transform:scale(.9)}
+.fx-ibtn svg{width:16px;height:16px}
+.fx-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.fx-card-t{display:flex;align-items:center;gap:8px;font-size:.84rem;font-weight:700;color:var(--text);margin-bottom:10px;letter-spacing:-.01em}
+.fx-card-t svg{width:15px;height:15px;color:var(--accent);flex-shrink:0}
+.fx-hint{font-size:.68rem;color:var(--muted);margin:-4px 0 10px;line-height:1.5;font-weight:500}
+.fx-row{display:flex;gap:8px;flex-wrap:wrap}
+.fx-row .ff-input{flex:1;min-width:100px}
+.fx-btn{font-size:.8rem;font-weight:700;color:#06080F;border:0;border-radius:11px;padding:10px 16px;cursor:pointer;white-space:nowrap;letter-spacing:-.01em;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 6px 16px -4px color-mix(in srgb,var(--accent) 55%,transparent);transition:transform .15s;display:inline-flex;align-items:center;gap:6px}
+.fx-btn:active{transform:scale(.96)}
+.fx-btn svg{width:14px;height:14px}
+.fx-lbl{font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:2px 2px 8px}
+.fx-search{position:relative;margin:0 0 12px}
+.fx-search>svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted);pointer-events:none}
+.fx-search input{width:100%;box-sizing:border-box;padding:11px 14px 11px 36px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-size:.84rem;outline:none;transition:border-color .15s,box-shadow .15s}
+.fx-search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.fx-hot{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:.8rem;font-weight:600;color:var(--text)}
+@media(max-width:420px){.fx-wrap{padding:12px 12px 42px}.fx-title{font-size:1rem}}
+</style>
+
+<!-- ══ STATISTICS ══ -->
+<div id="statsPage" style="display:none;position:fixed;inset:0;z-index:600;overflow-y:auto">
+  <div class="fx-wrap">
+    <div class="fx-head">
+      <button class="fx-back" onclick="closeStatsPage()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+      <div class="fx-badge fx-h-cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
+      <div class="fx-tt">
+        <div class="fx-title">Statistics</div>
+        <div class="fx-sub" id="statsUpdated">Admin overview</div>
+      </div>
+      <div class="fx-actions">
+        <button class="fx-ibtn" onclick="copyAvailList()" title="Copy available list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+        <button class="fx-ibtn" onclick="loadStats()" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>
+      </div>
+    </div>
+    <div id="statsCards"></div>
+    <div id="statsMostActive" class="fx-hot"></div>
+    <div class="fx-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="statsSearch" type="text" placeholder="Filter country or range…" oninput="filterStats()">
+    </div>
+    <div id="statsCountries"></div>
+  </div>
+</div>
+
+<!-- ══ ADMIN CONTROL ══ -->
+<div id="adminPage" style="display:none;position:fixed;inset:0;z-index:600;overflow-y:auto">
+  <div class="fx-wrap">
+    <div class="fx-head">
+      <button class="fx-back" onclick="closeAdminPage()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+      <div class="fx-badge fx-h-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5z"/></svg></div>
+      <div class="fx-tt">
+        <div class="fx-title">Admin Control</div>
+        <div class="fx-sub">Appoint &amp; manage admins</div>
+      </div>
+    </div>
+
+    <div class="fx-card">
+      <div class="fx-card-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>Promote a user to Admin</div>
+      <div class="fx-row">
+        <input id="adminUserInput" type="text" placeholder="LaMix username" class="ff-input">
+        <button onclick="promoteAdmin()" class="fx-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Promote</button>
+      </div>
+      <div id="adminMsg" class="ff-msg"></div>
+    </div>
+
+    <div class="fx-lbl">Current Admins</div>
+    <div id="adminList"></div>
+
+    <div class="fx-card" style="margin-top:14px">
+      <div class="fx-card-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 12 22 2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/></svg>Team Prefixes</div>
+      <div class="fx-hint">Assign a prefix (e.g. <b>ZML_</b>) + display name to an admin.</div>
+      <div class="fx-row">
+        <input id="pfPrefix" type="text" placeholder="Prefix e.g. ZML_" class="ff-input" style="min-width:110px">
+        <input id="pfAdmin" type="text" placeholder="admin username" class="ff-input" style="min-width:110px">
+        <input id="pfLabel" type="text" placeholder="Display name e.g. Zml" class="ff-input" style="min-width:130px">
+        <button onclick="setPrefix()" class="fx-btn">Assign</button>
+      </div>
+      <div id="pfMsg" class="ff-msg"></div>
+      <div id="pfList" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LIMIT INCREASE ══ -->
+<div id="limitPage" style="display:none;position:fixed;inset:0;z-index:600;overflow-y:auto">
+  <div class="fx-wrap">
+    <div class="fx-head">
+      <button class="fx-back" onclick="closeLimitPage()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+      <div class="fx-badge fx-h-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4"/><path d="M5 12v8h14v-8M12 8v12M12 8s-4 0-4-3a2 2 0 0 1 4 0zM12 8s4 0 4-3a2 2 0 0 0-4 0z"/></svg></div>
+      <div class="fx-tt">
+        <div class="fx-title">Limit Increase</div>
+        <div class="fx-sub">Free a try = remove 1 attempt row · max +3/user/day</div>
+      </div>
+    </div>
+
+    <div class="fx-card">
+      <div class="fx-card-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search a user</div>
+      <div class="fx-row">
+        <input id="limitUserInput" type="text" placeholder="LaMix username" class="ff-input">
+        <button onclick="loadLimitStatus()" class="fx-btn">Search</button>
+      </div>
+      <div id="limitMsg" class="ff-msg"></div>
+    </div>
+
+    <div id="limitResults"></div>
+  </div>
+</div>
+
+<!-- ══ MY TEAM ══ -->
+<div id="teamPage" style="display:none;position:fixed;inset:0;z-index:600;overflow-y:auto">
+  <div class="fx-wrap">
+    <div class="fx-head">
+      <button class="fx-back" onclick="closeTeamPage()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+      <div class="fx-badge fx-h-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="3"/><path d="M15.5 14.6a5.5 5.5 0 0 1 6 5.4"/></svg></div>
+      <div class="fx-tt">
+        <div class="fx-title">My Team</div>
+        <div class="fx-sub" id="teamSub">Clients grouped by team · cached 60s</div>
+      </div>
+      <div class="fx-actions">
+        <button class="fx-ibtn" onclick="loadMyClients(true)" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>
+      </div>
+    </div>
+    <div id="teamList"></div>
+  </div>
+</div>
+
+<!-- ══ TEAM REPORT ══ -->
+<div id="teamReportPage" style="display:none;position:fixed;inset:0;z-index:600;overflow-y:auto">
+  <div class="fx-wrap">
+    <div class="fx-head">
+      <button class="fx-back" onclick="closeTeamReport()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></button>
+      <div class="fx-badge fx-h-rose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+      <div class="fx-tt">
+        <div class="fx-title">Team OTP Report</div>
+        <div class="fx-sub" id="trSub">Daily &amp; weekly OTPs per team</div>
+      </div>
+      <div class="fx-actions">
+        <button class="fx-ibtn" onclick="copyTeamReport()" title="Copy report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+        <button class="fx-ibtn" onclick="loadTeamReport(true)" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>
+      </div>
+    </div>
+    <div id="trHot" style="display:none;margin-bottom:12px"></div>
+    <div id="trList"></div>
+  </div>
+</div>
+
+<!-- ══ CONFIRM DIALOG ══ -->
+<div id="zconfirmOverlay" class="zconfirm-overlay" style="display:none">
+  <div class="zconfirm-box">
+    <div class="zconfirm-ic" id="zconfirmIc"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--red)"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5"/><path d="M12 18.5h.01"/></svg></div>
+    <div class="zconfirm-msg" id="zconfirmMsg"></div>
+    <div class="zconfirm-btns">
+      <button type="button" class="zconfirm-no" id="zconfirmNo">Cancel</button>
+      <button type="button" class="zconfirm-yes" id="zconfirmYes">Confirm</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,83 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Missions</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:720px;margin:30px auto;padding:16px;background:#0f1419;color:#e6e6e6}
+h1{margin:0 0 18px}
+.card{background:#1a2028;border:1px solid #2a333f;border-radius:12px;padding:18px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:16px;color:#9cc0ff}
+.btn{background:#2563eb;color:#fff;border:none;padding:10px 16px;border-radius:8px;font:600 14px system-ui;cursor:pointer}
+.btn:hover{background:#1d4ed8}
+.btn:disabled{background:#333;cursor:wait}
+.btn.danger{background:#dc2626}
+.btn.danger:hover{background:#b91c1c}
+input[type=file]{color:#ccc}
+.log{background:#000;color:#9f9;font-family:ui-monospace,monospace;font-size:12px;padding:10px;border-radius:6px;max-height:220px;overflow:auto;white-space:pre-wrap;margin-top:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.badge{background:#22c55e;color:#000;padding:3px 10px;border-radius:10px;font:600 12px system-ui}
+</style></head><body>
+<h1>🎯 Missions Control</h1>
+
+<div class="card">
+<h2>📥 LaMix CSV Importer</h2>
+<p>Upload a LaMix CSV export (Date, Range, Number, CLI, SMS, Client, ...).
+Duplicates are detected by <code>(time, number, cli, content_hash)</code> — same-second different SMS is kept, identical rows skipped.</p>
+<div class="row">
+<input type="file" id="f" accept=".csv,text/csv">
+<button class="btn" id="up">Upload & Import</button>
+<span class="badge" id="st" style="display:none"></span>
+</div>
+<div class="log" id="log" style="display:none"></div>
+</div>
+
+<div class="card">
+<h2>⏪ Time Rewind</h2>
+<p>Reset the CDR cursor back to today's <b>05:00 AM PKT (00:00 UTC)</b> — the system will catch up at <b>37 req/min</b> (1.62s/call, 500 records/call) until it reaches realtime, then go silent.</p>
+<div class="row">
+<button class="btn danger" id="rw">Rewind to 05:00 AM PKT</button>
+<span id="rwStatus"></span>
+</div>
+</div>
+
+<div class="card">
+<h2>📊 Live Status</h2>
+<div id="status"></div>
+</div>
+
+<script>
+const L=document.getElementById('log');
+function lg(m){ L.style.display='block'; L.textContent += m+'\n'; L.scrollTop=L.scrollHeight; }
+document.getElementById('up').onclick = async () => {
+  const f=document.getElementById('f').files[0];
+  if(!f){ alert('Pick a CSV first'); return; }
+  const btn=document.getElementById('up'); btn.disabled=true;
+  const st=document.getElementById('st');
+  lg('reading '+f.name+' ('+Math.round(f.size/1024)+' KB)');
+  const txt=await f.text();
+  lg('parsed, sending to /api/missions/import-csv ...');
+  const r=await fetch('/api/missions/import-csv',{method:'POST',headers:{'Content-Type':'text/csv'},body:txt});
+  const d=await r.json();
+  lg(JSON.stringify(d,null,2));
+  st.textContent = d.ok ? ('✓ '+d.inserted+' inserted, '+d.skipped+' duplicates skipped') : ('✗ '+d.error);
+  st.style.background = d.ok?'#22c55e':'#ef4444'; st.style.display='inline-block';
+  btn.disabled=false;
+};
+document.getElementById('rw').onclick = async () => {
+  const btn=document.getElementById('rw'); btn.disabled=true;
+  const s=document.getElementById('rwStatus'); s.textContent='...rewinding';
+  const r=await fetch('/api/missions/rewind',{method:'POST'});
+  const d=await r.json();
+  s.textContent = d.ok ? '✓ cursor reset, catch-up started' : ('✗ '+d.error);
+  btn.disabled=false;
+};
+(async function poll(){
+  try{
+    const r=await fetch('/api/missions/status');
+    const d=await r.json();
+    document.getElementById('status').innerHTML =
+      '<div>Stored today: <b>'+d.stored_today+'</b></div>'+
+      '<div>Cursor age: <b>'+d.cursor_age_s+'s</b></div>'+
+      '<div>Last fetch: <b>'+(d.last_time||'—')+'</b></div>';
+  }catch(e){}
+  setTimeout(poll,3000);
+})();
+</script></body></html>

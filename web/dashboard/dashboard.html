@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#06080F">
+    <title>ZAMIL SMS — Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/branding/favicon.ico">
+    <script>
+/* ZAMIL SMS — theme before first paint (kills dark-flash on refresh) — Dev: Muhammad Muzammil Aziz */
+(function(){try{
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('app_theme') || 'light');
+}catch(e){}})();
+</script>
+    <link rel="stylesheet" href="common.css?v=20260808">
+    <link rel="stylesheet" href="/dashboard/dashboard.css?v=20260808">
+    <link rel="stylesheet" href="/dashboard/pages.css?v=20260808">
+    <script>
+(function(){
+  var FIXED = sessionStorage.getItem('cssfix');
+  function cssApplied(){
+    try{
+      var b = document.querySelector('.bottom-nav') || document.querySelector('.header');
+      if(!b) return true;                      // not a styled page
+      return getComputedStyle(b).position === 'fixed' ||
+             getComputedStyle(document.body).getPropertyValue('--accent').trim() !== '';
+    }catch(e){ return true; }
+  }
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      if(!cssApplied()){
+        if(!FIXED){                            // auto-fix once (no loop)
+          sessionStorage.setItem('cssfix','1');
+          var u = new URL(location.href);
+          u.searchParams.set('cb', Date.now()); // bust the poisoned cache
+          location.replace(u.toString());
+        }
+      } else {
+        sessionStorage.removeItem('cssfix');
+      }
+    }, 700);
+  });
+})();
+</script>
+    <script>
+    /* ══ Inactivity cache-killer: 1h idle → purge data caches + force fresh load ══ */
+    (function(){
+      var KEY='zamil_last_active', GAP=60*60*1000;
+      var now=Date.now(), last=0;
+      try{ last=parseInt(localStorage.getItem(KEY)||'0',10)||0; }catch(e){}
+      var freshReload=/[?&]fresh=\d+/.test(location.search);
+      if(last>0 && (now-last)>GAP && !freshReload){
+        try{
+          var KEEP={app_session:1,app_username:1,app_theme:1,app_client_id:1,app_client_name:1,app_panel_num:1,
+                    hydra_role:1,hydra_agent_token:1,zamil_last_active:1,notif_banner_dismissed:1,
+                    ranges_grouped:1,earn_cur:1,earn_pkr_rate:1};
+          var kill=[];
+          for(var i=0;i<localStorage.length;i++){
+            var k=localStorage.key(i); if(!k||KEEP[k])continue;
+            if(/cache|otp|sms|range|nums|numbers|lb_|as_|zc_/i.test(k))kill.push(k);
+          }
+          kill.forEach(function(k){localStorage.removeItem(k);});
+        }catch(e){}
+        try{ sessionStorage.clear(); }catch(e){}
+        if(window.caches){try{caches.keys().then(function(ns){ns.forEach(function(n){caches.delete(n);});});}catch(e){}}
+        location.replace(location.pathname+(location.search?location.search+'&':'?')+'fresh='+now);
+        return;
+      }
+      if(freshReload&&history.replaceState){
+        try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])fresh=\d+&?/,'$1').replace(/[?&]$/,''));}catch(e){}
+      }
+      function touch(){try{localStorage.setItem(KEY,String(Date.now()));}catch(e){}}
+      ['pointerdown','keydown','touchstart','wheel'].forEach(function(ev){document.addEventListener(ev,touch,{passive:true});});
+      touch();
+    })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<header class="header">
+    <div class="header-left">
+        <button class="hamburger" onclick="openDrawer()" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="logo">
+            <img src="/branding/logo-dark.png" class="header-logo-svg header-logo-dark" alt="Logo">
+            <img src="/branding/logo-light.png" class="header-logo-svg header-logo-light" alt="Logo">
+        </div>
+    </div>
+
+   <div class="header-right">
+            <button class="bell-btn" id="bellBtn" onclick="openNotifPanel()" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+            <span class="bell-badge" id="bellBadge" style="display:none">0</span>
+        </button>
+
+        <div class="profile-wrap">
+            <div class="profile-btn" onclick="openDrawer()">
+                <div class="profile-avatar" id="profileAvatar">US</div>
+                <div class="profile-text">
+                    <span class="profile-name" id="profileName">User</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+    <div class="app">
+        <div class="container">
+            <!-- MAIN SCREEN -->
+            <div id="mainScreen" style="display:block">
+                <!-- RANGES PANEL -->
+                <div id="rangesPanel">
+                    <div class="otp-hero" id="otpHeroCard">
+                      <div class="otp-hero-ic">📬</div>
+                      <div class="otp-hero-info">
+                        <div class="otp-hero-label">Today's OTPs</div>
+                        <div class="otp-hero-num" id="rangesOtpToday">0</div>
+                        <div class="otp-hero-sub"><span class="live-dot"></span> Live · auto-updating</div>
+                      </div>
+                      <div class="otp-hero-refresh rbtn" onclick="if(typeof silentSmsRefresh==='function')silentSmsRefresh(true)" title="Refresh"><span class="r-ic">↻</span></div>
+                    </div>
+                        <div class="section-hdr" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                        <div class="section-title">📡 Your Ranges <span class="badge" id="rangesCount">0</span></div>
+                        <button class="btn btn-sm btn-ghost rbtn" onclick="loadRanges(true)" title="Force refresh ranges"><span class="r-ic">↻</span> Refresh</button>
+                    </div>
+                    <div class="search-bar">
+                        <span class="search-ic">🔍</span>
+                        <input type="text" id="rangesSearch" placeholder="Search country or range..." oninput="onRangesSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    </div>
+                    <div id="rangesList" class="ranges-list"></div>
+                </div>
+
+                <!-- NUMBERS PANEL -->
+              <div id="numbersPanel">
+                    <div class="num-top-row">
+                        <button class="panel-back" onclick="showRanges()">← Back</button>
+                        <div class="num-top-title" id="panelTitle">Range Name</div>
+                        <span class="badge" id="numCount">0</span>
+                        <button class="btn btn-sm btn-ghost rbtn" id="btnRefreshNums" onclick="refreshNumbers()"><span class="r-ic">↻</span> Refresh</button>
+                    </div>
+                    <div class="strip-bar">
+                        <span class="strip-label">View:</span>
+                        <button class="btn btn-sm btn-copy" id="btnRestoreCC" onclick="applyStrip(0)" style="display:none">Restore CC</button>
+                        <button class="btn btn-sm btn-copy" id="btnRemoveCC" onclick="applyStripCC()">Remove CC</button>
+                        <span class="strip-hint" id="stripHint">Full number</span>
+                    </div>
+                    <div id="pilFilterBar" class="actions-bar" style="display:none;gap:8px"></div>
+                    <div class="search-bar">
+                        <span class="search-ic">🔍</span>
+                        <input type="text" id="numSearch" placeholder="Search numbers..." oninput="onNumSearch()">
+                    </div>
+                    <div class="section-hdr" style="padding-top:5px">
+                        <span style="font-size:.72rem;color:var(--muted)" id="totalNums">0 numbers</span>
+                        <button class="btn btn-sm btn-ghost" id="btnCopyAll" onclick="copyAll()">⎘ Copy All</button>
+                    </div>
+                    <div id="numList" class="num-list"></div>
+                </div>
+
+                <!-- SMS MINI BAR -->
+                <div id="smsMiniBar" class="sms-mini-bar" onclick="bnSwitch('inbox')">
+                    <span class="sms-mini-icon">📩</span>
+                    <span class="sms-mini-num" id="smsMiniNum">0</span>
+                </div>
+            </div>
+
+           <!-- ADD NUMBERS PAGE -->
+<div id="addNumPage" style="display:none">
+    <div class="an-hdr">
+        <div class="an-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg> Add Numbers</div>
+        <div class="an-sub">Search &amp; allocate ranges</div>
+        <button class="an-info" onclick="toggleAnInfo()" title="Help &amp; contact"><span>i</span></button>
+    </div>
+
+    <div id="anInfoPanel" class="an-info-panel" style="display:none">
+        <div class="an-info-text">Search a country, pick a range with free numbers, and allocate them to your account. Need more numbers or extra functions? Contact the admin.</div>
+        <a class="an-wa" href="" target="_blank" rel="noopener">💬 WhatsApp admin</a>
+    </div>
+
+    <div class="alloc-card an-client-card">
+        <div class="alloc-card-title"><span class="alloc-step">1</span> Client</div>
+        <div id="aClientInfo" class="alloc-client-info">Verifying...</div>
+    </div>
+
+    <div id="aSearchCard" class="alloc-card" style="display:none">
+        <div class="alloc-card-title"><span class="alloc-step">2</span> Search Ranges</div>
+        <div class="alloc-search-row">
+            <input type="text" id="aCountryInput" class="alloc-input" placeholder="Country (e.g., Tunisia, Angola)">
+            <button class="btn btn-primary" id="aSearchBtn" onclick="allocSearch()">🔍 Search</button>
+        </div>
+        <div id="aRangeList" class="alloc-range-list"></div>
+    </div>
+
+    <div id="aAllocCard" class="alloc-card" style="display:none">
+        <div class="alloc-card-title"><span class="alloc-step">3</span> Allocate</div>
+        <div class="alloc-client-info" style="margin-bottom:12px" id="aSelRangeInfo"></div>
+        <div class="alloc-field">
+            <label>Quantity (1–50)</label>
+            <input type="number" id="aQtyInput" class="alloc-input" value="3" min="1" max="50">
+        </div>
+        <div id="aLimitBar" class="alloc-limit-bar"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-ghost" onclick="aBackToSearch()">← Back</button>
+            <button class="btn btn-primary" id="aAllocBtn" onclick="doAllocate()" style="flex:1">
+                <span id="aAllocSpinner" class="spinner" style="display:none;width:14px;height:14px;border-width:2px"></span>
+                Allocate Numbers
+            </button>
+        </div>
+        <div id="aAllocResult" class="alloc-result"></div>
+    </div>
+</div>
+
+            <!-- LEADERBOARD PAGE -->
+            <div id="top10Page" style="display:none">
+                <div class="lb-hdr">
+                    <div class="lb-title-wrap">
+                        <span class="lb-trophy">🏆</span>
+                        <div>
+                            <div class="lb-title">Leaderboard</div>
+                            <div class="lb-sub">Top SMS Senders</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-ghost lb-refresh rbtn" id="lbSpin" style="display:none" title="Refresh leaderboard"><span class="r-ic">↻</span></button>
+                </div>
+                <div class="lb-range-group" style="margin-bottom:16px">
+                    <button class="lb-range-btn selected" data-range="today" onclick="loadLeaderboard('today')">Today</button>
+                    <button class="lb-range-btn" data-range="week" onclick="loadLeaderboard('week')">This Week</button>
+                    <button class="lb-range-btn" data-range="month" onclick="loadLeaderboard('month')">This Month</button>
+                </div>
+                <div id="lbComing" class="lb-coming" style="display:none">
+                    <div class="lb-coming-icon">⏳</div>
+                    <div class="lb-coming-title">Hold on a moment…</div>
+                    <div class="lb-coming-sub">Fetching the latest rankings…</div>
+                </div>
+                <div id="lbList" class="lb-card" style="display:none"></div>
+            </div>
+
+            <!-- INBOX PAGE -->
+            <div id="inboxPage" style="display:none">
+                <div id="notifBanner" class="notif-banner" style="display:none">
+                    <span class="notif-banner-ic">🔔</span>
+                    <span class="notif-banner-text">Get instant alerts when new SMS arrive.</span>
+                    <button class="notif-banner-btn" onclick="enableNotifications()">Enable</button>
+                    <button class="notif-banner-close" onclick="dismissNotifBanner()">✕</button>
+                </div>
+
+                <div class="sms-big-card" id="smsCounterCard" style="position:relative">
+                    <div class="sms-big-inner">
+                        <div>
+                            <div class="sms-big-label">Total SMS Today</div>
+                            <div class="sms-big-num" id="smsBigNum">0</div>
+                            <div class="sms-big-sub" id="smsBigSub"><span class="live-dot"></span> Updated just now</div>
+                        </div>
+                    </div>
+                    <button class="sms-big-refresh rbtn" onclick="if(typeof silentSmsRefresh==='function')silentSmsRefresh(true)" title="Refresh now"><span class="r-ic">↻</span></button>
+                </div>
+
+                <div class="sms-stats-row" style="margin-bottom:16px">
+                    <div class="sms-stat-card">
+                        <div class="sms-stat-label">This Week</div>
+                        <div class="sms-stat-num" id="smsWeekNum">0</div>
+                    </div>
+                    <div class="sms-stat-card">
+                        <div class="sms-stat-label">This Month</div>
+                        <div class="sms-stat-num" id="smsMonthNum">0</div>
+                    </div>
+                </div>
+
+                <div class="section-hdr"><div class="section-title">📨 Recent Messages</div></div>
+                <div class="sms-big-card">
+                    <div id="smsRecentList" style="padding:4px 0"></div>
+                </div>
+            </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+        <button class="bn-item active" data-page="ranges" onclick="bnSwitch('ranges')">
+            <span class="bn-icon">📡</span>
+            <span>Ranges</span>
+        </button>
+        <button class="bn-item" data-page="inbox" onclick="bnSwitch('inbox')">
+            <span class="bn-icon">📬</span>
+            <span>Inbox</span>
+            <span class="bn-sms-pill"><span class="bn-sms-count" id="bnSmsCount">0</span></span>
+        </button>
+        <button class="bn-item" data-page="add" onclick="bnSwitch('add')">
+            <span class="bn-icon">➕</span>
+            <span>Add</span>
+        </button>
+        <button class="bn-item" id="bnDorBtn" data-page="dor" onclick="bnSwitch('dor')" style="display:none">
+          <div class="bn-icon">📋</div>
+          <div class="bn-label">DOR</div>
+        </button>
+        <button class="bn-item" data-page="top10" onclick="bnSwitch('top10')">
+            <span class="bn-icon">🏆</span>
+            <span>Top 10</span>
+        </button>
+    </nav>
+
+    <!-- MODALS -->
+    <div id="numSmsModal" onclick="if(event.target===this)closeNumSmsModal()">
+        <div class="shr-box" style="max-width:420px">
+            <div class="shr-header">
+                <div class="shr-title" id="numSmsTitle">📲 Number</div>
+                <button class="shr-close" onclick="closeNumSmsModal()">✕</button>
+            </div>
+            <div id="numSmsBody" class="shr-body" style="padding:0"></div>
+        </div>
+    </div>
+
+    <div id="shareModal" class="shr-overlay" onclick="if(event.target===this)closeShareModal()">
+        <div class="shr-box">
+            <div class="shr-header">
+                <div class="shr-title" id="shrTitle">🔗 Share Numbers</div>
+                <button class="shr-close" onclick="closeShareModal()">✕</button>
+            </div>
+            <div class="shr-body">
+                <div id="shareLoadingState" class="shr-state"><div class="spinner"></div><br/><span id="shrLoadingMsg">Loading…</span></div>
+                <div id="shrStep1" style="display:none"></div>
+                <div id="shrStep2" class="shr-content" style="display:none"></div>
+                <div id="shareErrorState" class="shr-state shr-error" style="display:none"></div>
+            </div>
+            <div id="shareFooter" class="shr-footer" style="display:none">
+                <button class="shr-cancel-btn" onclick="closeShareModal()">Cancel</button>
+                <button class="shr-confirm-btn" id="shareConfirmBtn" disabled onclick="shareConfirm()">Share</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cpwModal" class="shr-overlay" onclick="if(event.target===this)closeChangePasswordModal()">
+        <div class="shr-box" style="max-width:400px">
+            <div class="shr-header">
+                <div class="shr-title">🔑 Change Password</div>
+                <button class="shr-close" onclick="closeChangePasswordModal()">✕</button>
+            </div>
+            <div class="shr-body">
+                <div class="alloc-field">
+                    <label>Current Password</label>
+                    <input type="password" id="cpwOld" class="alloc-input">
+                </div>
+                <div class="alloc-field">
+                    <label>New Password</label>
+                    <input type="password" id="cpwNew" class="alloc-input">
+                </div>
+                <div class="alloc-field">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="cpwConfirm" class="alloc-input">
+                </div>
+                <div id="cpwMsg" style="display:none;padding:10px;border-radius:8px;font-size:.82rem;font-weight:600;margin-bottom:12px"></div>
+                <button class="btn btn-primary" id="cpwSubmitBtn" onclick="submitChangePassword()" style="width:100%">Update Password</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner" style="width:32px;height:32px;border-width:3px"></div>
+        <div id="loadingText" class="loading-text">Loading…</div>
+    </div>
+
+    <!-- ═══ LEFT DRAWER ═══ -->
+<div class="zdrawer-overlay" id="zdrawerOverlay" onclick="closeDrawer()"></div>
+<aside class="zdrawer" id="zdrawer">
+  <div class="zdrawer-hdr">
+    <img src="/branding/logo-dark.png" class="header-logo-dark" alt="Zamil SMS" style="height:26px;width:auto">
+    <img src="/branding/logo-light.png" class="header-logo-light" alt="Zamil SMS" style="height:26px;width:auto">
+    <button class="zdrawer-close" onclick="closeDrawer()" aria-label="Close">✕</button>
+  </div>
+  <div class="zdrawer-user">
+    <div class="zdrawer-user-label">Logged in as</div>
+    <div class="zdrawer-user-name" id="drawerUsername">User</div>
+    <div id="drawerRolePill" style="margin-top:6px"></div>
+  </div>
+  <div class="zdrawer-sec">
+  <div class="zdrawer-sec-title">⚡ Tools</div>
+ <button class="drw-item" data-pf="cli" onclick="closeDrawer();openCliPage()">
+    <span>📡</span><span>CLI Insights</span>
+  </button>
+  <button class="drw-item" id="drawerStatsBtn" style="display:none" onclick="closeDrawer();openStatsPage()">
+      <span>📊</span><span>Statistics</span>
+    </button>
+    <button class="drw-item" id="drawerAdminBtn" style="display:none" onclick="closeDrawer();openAdminPage()">
+      <span>🛡️</span><span>Admin Control</span>
+    </button>
+      <button class="drw-item" id="drawerLimitBtn" style="display:none" onclick="closeDrawer();openLimitPage()">
+      <span>🔓</span><span>Limit Increase</span>
+    </button>
+      <button class="drw-item" id="drawerTeamBtn" style="display:none" onclick="closeDrawer();openTeamPage()">
+      <span>👥</span><span>My Team</span>
+    </button>
+      <button class="drw-item" id="drawerReportBtn" style="display:none" onclick="closeDrawer();openTeamReport()">
+      <span>📈</span><span>Team Report</span>
+      </button>
+  </div>
+  <div class="zdrawer-sec" style="border-top:1px solid var(--border)">
+    <div class="zdrawer-sec-title">⚙️ Account</div>
+    <button class="drw-item" onclick="toggleTheme();syncDrawerTheme()">
+      <span id="drawerThemeIcon">☀️</span><span>Theme</span>
+    </button>
+    <button class="drw-item" onclick="closeDrawer();openChangePasswordModal()">
+      <span>🔑</span><span>Change Password</span>
+    </button>
+    <button class="drw-item danger" onclick="closeDrawer();doLogout()">
+      <span>🚪</span><span>Sign Out</span>
+    </button>
+  </div>
+  <span id="themeBtn" aria-hidden="true" style="display:none"></span>
+</aside>
+
+    <script src="/dashboard/flags.js" defer></script>
+    <script src="/login/providers.js" defer></script>
+    <script src="/dashboard/utils.js" defer></script>
+    <script src="/dashboard/api.js" defer></script>
+    <script src="/dashboard/auth.js" defer></script>
+    <script src="/dashboard/app.js?v=1789414657" defer></script>
+    <script src="/dashboard/feature.js?v=1790142710" defer></script>
+    <script src="/dashboard/cli.js"></script>
+    <script src="/dashboard/notifs.js" defer></script>
+    
+
+    <script>
+    window.addEventListener('DOMContentLoaded', function(){
+      window.submitChangePassword = function(){
+        var oldp=document.getElementById('cpwOld').value, np=document.getElementById('cpwNew').value, cp=document.getElementById('cpwConfirm').value;
+        var msg=document.getElementById('cpwMsg'), btn=document.getElementById('cpwSubmitBtn');
+        function show(t,good){ msg.style.display='block'; msg.textContent=t; msg.style.background=good?'rgba(52,211,153,.12)':'rgba(248,113,113,.1)'; msg.style.color=good?'var(--green)':'var(--red)'; }
+        if(!np||np.length<6){ show('New password must be at least 6 characters',false); return; }
+        if(np!==cp){ show('Passwords do not match',false); return; }
+        btn.disabled=true; btn.textContent='Updating…';
+        fetch('/api/auth/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:localStorage.getItem('app_session'),oldPassword:oldp,newPassword:np})})
+          .then(function(r){return r.json();}).then(function(d){
+            btn.disabled=false; btn.textContent='Update Password';
+            if(d&&d.ok){ show('✅ Password updated!',true); document.getElementById('cpwOld').value=''; document.getElementById('cpwNew').value=''; document.getElementById('cpwConfirm').value=''; }
+            else show((d&&d.error)||'Update failed',false);
+          }).catch(function(){ btn.disabled=false; btn.textContent='Update Password'; show('Connection error',false); });
+      };
+    });
+    </script>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input[type="text"]').forEach(input => {
+                input.value = '';
+                input.setAttribute('autocomplete', 'off');
+            });
+        });
+    </script>
+
+<script>
+/* ═══ Visual-pack behaviour (additive; no app.js / backend changes) ═══ */
+(function(){
+  function syncHero(){
+    var src = document.getElementById('smsBigNum'), dst = document.getElementById('rangesOtpToday');
+    if (src && dst){ var v = (src.textContent||'').trim(); if (v !== '' && v !== dst.textContent) dst.textContent = v; }
+  }
+  try { var src = document.getElementById('smsBigNum');
+    if (src && window.MutationObserver) new MutationObserver(syncHero).observe(src, {childList:true, characterData:true, subtree:true});
+  } catch(e){}
+  setInterval(syncHero, 1500);
+  try { var s = localStorage.getItem('app_session');
+    if (s) fetch('/api/smscount',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:s})})
+      .then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){ var dst=document.getElementById('rangesOtpToday'); if(dst) dst.textContent=(d.count!=null?d.count:0);} }).catch(function(){});
+  } catch(e){}
+
+  window.toggleFeatMenu = function(e){ if(e) e.stopPropagation(); var m=document.getElementById('featMenu'); if(m) m.style.display = (m.style.display==='block') ? 'none' : 'block'; };
+  document.addEventListener('click', function(){ var m=document.getElementById('featMenu'); if(m) m.style.display='none'; });
+  var fm = document.getElementById('featMenu'); if (fm) fm.addEventListener('click', function(e){ e.stopPropagation(); });
+})();
+</script>
+
+<script>
+/* ═══ ADD-ON 1 — Real-time floating OTP ═══ */
+(function(){
+  function ready(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+  function codeOf(m){ var x=String(m||'').match(/\b(\d{4,8})\b/); return x?x[1]:''; }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function keyOf(r){ return ((r&&(r.datetime||r.time))||'')+'|'+((r&&r.number)||''); }
+
+  window._floatSeen = window._floatSeen || new Set();
+  window.seedFloatSeen = function(recent){ try{ (recent||[]).forEach(function(r){ window._floatSeen.add(keyOf(r)); }); }catch(e){} };
+
+  var actx=null;
+  function ensureCtx(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(actx&&actx.state==='suspended'){ actx.resume().catch(function(){}); } return actx; }
+  function chime(){ var c=ensureCtx(); if(!c) return; try{ var now=c.currentTime;
+    [[660,0],[880,0.10],[1320,0.20]].forEach(function(p){ var o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination); o.type='sine'; o.frequency.value=p[0]; var t=now+p[1]; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.30,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.34); o.start(t); o.stop(t+0.36); });
+  }catch(e){} }
+  ['click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, ensureCtx, {once:true, passive:true}); });
+
+  var host=null, hideT=null;
+  function toastHost(){ if(host) return host; host=document.createElement('div'); host.id='otpFloat'; document.body.appendChild(host); return host; }
+  window.hideOtpFloat = function(){ if(host) host.classList.remove('show'); clearTimeout(hideT); };
+  function showFloat(text, recent){
+    var r=(recent&&recent[0])||null;
+    var k=keyOf(r);
+    if(!r || window._floatSeen.has(k)) return;
+    window._floatSeen.add(k);
+    var code=codeOf(r.message), cli=(r.cli||'OTP'), num=(r.number||''), t=(r.time||''), more=(recent&&recent.length>1)?(' +'+(recent.length-1)+' more'):'';
+    if(!code && !num) return;
+    var h=toastHost();
+    h.innerHTML='<div class="otp-float-card" title="Tap to copy '+(code||num)+'">'
+      +'<button class="otp-float-close" onclick="event.stopPropagation();hideOtpFloat()" aria-label="Dismiss">✕</button>'
+      +'<div class="otp-float-top"><div class="otp-float-cli">📨 <b>'+esc(cli)+more+'</b></div><div class="otp-float-time">'+esc(t)+'</div></div>'
+      +(code?'<div class="otp-float-code">'+esc(code)+'</div>':'')
+      +(num?'<div class="otp-float-num">📱 '+esc(num)+'</div>':'')
+      +(r.message?'<div class="otp-float-msg">'+esc(r.message)+'</div>':'')
+      +'<div class="otp-float-hint">tap card to copy code</div></div>';
+    var card=h.querySelector('.otp-float-card'); if(card) card.onclick=function(){ var v=code||num; if(v&&navigator.clipboard) navigator.clipboard.writeText(v).catch(function(){}); };
+    h.classList.add('show'); clearTimeout(hideT); hideT=setTimeout(window.hideOtpFloat, 4000);
+    if(!document.hidden) chime();
+  }
+  function enhanceCodes(){ try{ document.querySelectorAll('#smsRecentList .rsms-body').forEach(function(el){
+    if(el.getAttribute('data-otpdone')) return; el.setAttribute('data-otpdone','1');
+    el.innerHTML = el.innerHTML.replace(/\b(\d{4,8})\b/, '<span class="otp-code">$1</span>');
+  }); }catch(e){} }
+
+  ready(function(){
+    // 🛑 FLOAT CARD DISABLED — the single "New OTP" card (showOtpPopup) is the only alert now
+    window.showSmsAlert = function(){ /* suppressed on purpose */ };
+    if(typeof renderSmsRecent==='function'){ var _r=renderSmsRecent; window.renderSmsRecent=function(it){ try{_r(it);}catch(e){} enhanceCodes(); }; }
+  });
+})();
+
+/* ═══ ADD-ON 2 — Remember active tab (sessionStorage) ═══ */
+(function(){
+  function ready(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+  var KEY='zamil_view', NKEY='zamil_num';
+  function setView(v){ try{ sessionStorage.setItem(KEY,v); }catch(e){} }
+  function setNum(id,t,c){ try{ sessionStorage.setItem(NKEY, JSON.stringify({id:id,title:t,count:c})); setView('numbers'); }catch(e){} }
+  ready(function(){
+    try{
+      if(typeof bnSwitch==='function'){ var _bn=bnSwitch; window.bnSwitch=function(p){ try{ var m=(p==='home')?'ranges':p; setView(m); }catch(e){} return _bn.apply(this,arguments); }; }
+      if(typeof loadNumbers==='function'){ var _ln=loadNumbers; window.loadNumbers=function(id,t,c){ try{ setNum(id,t,c); }catch(e){} return _ln.apply(this,arguments); }; }
+      if(typeof showRanges==='function'){ var _sr=showRanges; window.showRanges=function(){ try{ setView('ranges'); }catch(e){} return _sr.apply(this,arguments); }; }
+    }catch(e){}
+    try{
+      if(!localStorage.getItem('app_session')) return;
+      var v=sessionStorage.getItem(KEY), n=sessionStorage.getItem(NKEY);
+      if(v==='numbers' && n){ var o=JSON.parse(n); if(o&&o.id){ try{ if(typeof ACTIVE_RANGE!=='undefined'){ ACTIVE_RANGE.id=o.id; ACTIVE_RANGE.title=o.title||''; ACTIVE_RANGE.count=o.count||0; } }catch(e){} if(typeof loadNumbers==='function') loadNumbers(o.id,o.title||'',o.count||0); return; } }
+      if(v && v!=='ranges' && v!=='numbers' && typeof bnSwitch==='function') bnSwitch(v);
+    }catch(e){}
+  });
+})();
+</script>
+
+<script>
+function openDrawer(){ var d=document.getElementById('zdrawer'),o=document.getElementById('zdrawerOverlay'); if(d)d.classList.add('open'); if(o)o.classList.add('open'); syncDrawerTheme(); }
+function closeDrawer(){ var d=document.getElementById('zdrawer'),o=document.getElementById('zdrawerOverlay'); if(d)d.classList.remove('open'); if(o)o.classList.remove('open'); }
+function syncDrawerTheme() {
+    var ic = document.getElementById('drawerThemeIcon');
+    if (ic) {
+        var t = (typeof THEME !== 'undefined') ? THEME : (document.documentElement.getAttribute('data-theme') || 'light');
+        ic.textContent = (t === 'dark') ? '🌙' : '☀️';
+    }
+}
+document.addEventListener('DOMContentLoaded', syncDrawerTheme);
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   🟢 IMPROVED CACHE LAYER — User-specific keys + TTL + logout clear
+   Replaces the old global cache. All existing functions preserved.
+   ═══════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+
+  var ZCache = window.ZCache = {
+    _uid: function(){
+      try {
+        var u = localStorage.getItem('app_username') || '';
+        if (!u) { var s = localStorage.getItem('app_session'); if (s) { var p = s.split('.'); if (p[1]) { var d = JSON.parse(atob(p[1])); u = d.username || d.clientName || ''; } } }
+        return u ? u.toLowerCase().replace(/[^a-z0-9]/g,'') : 'anon';
+      } catch(e){ return 'anon'; }
+    },
+    _key: function(name){ return 'zc_' + this._uid() + '_' + name; },
+    get: function(name, maxAgeMs){
+      try {
+        var raw = localStorage.getItem(this._key(name));
+        if (!raw) return null;
+        var obj = JSON.parse(raw);
+        if (!obj || obj.d === undefined) return null;
+        if (maxAgeMs && (Date.now() - obj.t) > maxAgeMs) { localStorage.removeItem(this._key(name)); return null; }
+        return obj.d;
+      } catch(e){ return null; }
+    },
+    set: function(name, data){
+      try { localStorage.setItem(this._key(name), JSON.stringify({ d: data, t: Date.now() })); } catch(e){}
+    },
+    remove: function(name){ try { localStorage.removeItem(this._key(name)); } catch(e){} },
+    clearAll: function(){
+      try {
+        var uid = this._uid(), prefix = 'zc_' + uid + '_';
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0) keys.push(k); }
+        keys.forEach(function(k){ localStorage.removeItem(k); });
+      } catch(e){}
+    }
+  };
+
+  var TTL_RANGES   = 5 * 60 * 1000;
+  var TTL_SMS      = 60 * 1000;
+  var TTL_LB       = 5 * 60 * 1000;
+  var TTL_WEEK     = 5 * 60 * 1000;
+  var TTL_MONTH    = 10 * 60 * 1000;
+  var TTL_SEARCH   = 60 * 1000;
+
+  function escH(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function _tallyBadges(recent){
+    var tally={}; (recent||[]).forEach(function(r){ var n=(r.number||'').replace(/[^0-9]/g,''); if(n) tally[n]=(tally[n]||0)+1; });
+    var keys=Object.keys(tally); if(!keys.length) return;
+    keys.forEach(function(n){ var c=tally[n]; try{ NUM_SMS_CACHE[n]=c; }catch(e){} var el=document.getElementById('sms_'+n); if(el){ el.textContent=c+'/'+SMS_DAILY_LIMIT; el.className='num-sms-badge'+(c>0?' has-sms':''); } });
+    try{ _otpSave(); }catch(e){}
+  }
+
+  function _paintAlloc(ranges){ ASTATE.ranges=ranges; ASTATE.availCache={}; ranges.forEach(function(r){ ASTATE.availCache[r.id]={available:r.available||0,total:r.total||0}; }); if(typeof renderAllocRanges==='function') renderAllocRanges(); }
+
+  function hookLogout(){
+    if (typeof doLogout === 'function' && !doLogout._zcHook) {
+      var _orig = doLogout;
+      window.doLogout = function(){ ZCache.clearAll(); try{ sessionStorage.clear(); }catch(e){} return _orig.apply(this, arguments); };
+      doLogout._zcHook = true;
+    }
+  }
+
+  function install(){
+    hookLogout();
+
+    if(typeof renderRanges==='function' && !renderRanges._zw){
+      var _rr=renderRanges;
+      renderRanges=function(list){
+        try{ var q=((document.getElementById('rangesSearch')||{}).value||'').trim(); if(list&&list.length&&!q) ZCache.set('ranges',list); }catch(e){}
+        return _rr.apply(this,arguments);
+      }; renderRanges._zw=1;
+    }
+
+    if(typeof loadRanges==='function' && !loadRanges._zw){
+      var _lr=loadRanges;
+      loadRanges=function(force){
+        var r=_lr.apply(this,arguments);
+        try{ setTimeout(function(){
+          var el=document.getElementById('rangesList'); if(!el)return;
+          var failed=el.querySelector('.empty button')||/⚠|Error|retry/i.test(el.textContent||'');
+          var blank=!el.children.length;
+          if(failed||blank){ var c=ZCache.get('ranges', TTL_RANGES); if(c&&c.length&&typeof renderRanges==='function') renderRanges(c); }
+        },2500); }catch(e){}
+        return r;
+      }; loadRanges._zw=1;
+    }
+
+    if(typeof _applySmsResult==='function' && !_applySmsResult._zw){
+      var _asr=_applySmsResult; window._zeroStreak=0; var _seeded=false;
+      window._lastNonZeroSms = window._lastNonZeroSms || { count:0, ts:0, day:'' };
+      function _bizDay(){ return new Date().toISOString().slice(0,10); }
+      window._applySmsResult=function(d){
+        if(d&&d.ok){
+          var cached=ZCache.get('sms', TTL_SMS);
+          var isZero=(d.count===0);
+          var today=_bizDay();
+          if(!isZero){ window._lastNonZeroSms={ count:d.count, ts:Date.now(), day:today }; window._zeroStreak=0; }
+          else { window._zeroStreak=(window._zeroStreak||0)+1; }
+          var sameDay = window._lastNonZeroSms.day === today;
+          var grace = sameDay && window._lastNonZeroSms.count>0 && (Date.now()-window._lastNonZeroSms.ts) < 180000;
+          if(isZero && grace){ var keep=(cached&&cached.count>0)?cached.count:window._lastNonZeroSms.count; return _asr.call(this,{ok:true,count:keep,recent:(cached&&cached.recent)||d.recent||[]}); }
+          if(!isZero) ZCache.set('sms',{count:d.count,recent:(d.recent||[]).slice(0,30),day:today});
+          if((d.count||0)<=50 && !isZero) _tallyBadges(d.recent||[]);
+          if(!_seeded){ _seeded=true; if(d.recent&&typeof window.seedFloatSeen==='function') window.seedFloatSeen(d.recent); }
+
+        }
+        return _asr.apply(this,arguments);
+      }; _applySmsResult._zw=1;
+    }
+
+    if(typeof renderLeaderboard==='function' && !renderLeaderboard._zw){
+      var _rlb=renderLeaderboard;
+      renderLeaderboard=function(users){
+        try{ if(users&&users.length){ var rg=(typeof LB_RANGE!=='undefined'?LB_RANGE:'today'); ZCache.set('lb_'+rg,users); } else { var rg2=(typeof LB_RANGE!=='undefined'?LB_RANGE:'today'); var c=ZCache.get('lb_'+rg2, TTL_LB); if(c&&c.length) return _rlb(c); } }catch(e){}
+        return _rlb.apply(this,arguments);
+      }; renderLeaderboard._zw=1;
+    }
+    if(typeof loadLeaderboard==='function' && !loadLeaderboard._zw){
+      var _llb=loadLeaderboard;
+      loadLeaderboard=function(range){
+        try{ var rg=range||(typeof LB_RANGE!=='undefined'?LB_RANGE:'today'); var c=ZCache.get('lb_'+rg, TTL_LB); if(c&&c.length&&typeof renderLeaderboard==='function'){ var coming=document.getElementById('lbComing'),list=document.getElementById('lbList'); if(coming)coming.style.display='none'; if(list)list.style.display='block'; renderLeaderboard(c); } }catch(e){}
+        return _llb.apply(this,arguments);
+      }; loadLeaderboard._zw=1;
+    }
+
+    if(typeof loadSmsRangeCounts==='function' && !loadSmsRangeCounts._zw){
+      window.loadSmsRangeCounts=function(){
+        if(typeof SESSION==='undefined'||!SESSION) return;
+        function apply(id,val,key,ttl){ var el=document.getElementById(id); if(!el)return; if(val>0){ ZCache.set(key,{v:val}); el.textContent=val.toLocaleString(); } else { var c=ZCache.get(key,ttl); if(c&&c.v>0) el.textContent=c.v.toLocaleString(); else el.textContent='0'; } }
+        apiCall('/api/smscount-range',{session:SESSION,range:'week'},function(d){ apply('smsWeekNum',(d&&d.ok?d.count:0),'week',TTL_WEEK); });
+        apiCall('/api/smscount-range',{session:SESSION,range:'month'},function(d){ apply('smsMonthNum',(d&&d.ok?d.count:0),'month',TTL_MONTH); });
+      }; loadSmsRangeCounts._zw=1;
+    }
+
+    if(typeof allocSearch==='function' && !allocSearch._zw){
+      window.allocSearch=function(){
+        var q=(document.getElementById('aCountryInput').value||'').trim();
+        if(!q){ if(typeof showToast==='function')showToast('Type a country or range name','error'); return; }
+        var btn=document.getElementById('aSearchBtn'), list=document.getElementById('aRangeList');
+        btn.disabled=true; btn.textContent='…';
+        var ck='as_'+q.toLowerCase(), cached=ZCache.get(ck, TTL_SEARCH);
+        if(cached&&cached.length) _paintAlloc(cached); else list.innerHTML='<div class="empty"><div class="spinner"></div></div>';
+        ASTATE.availCache={};
+        apiCall('/api/alloc/search-ranges',{query:q,session:SESSION},function(d){
+          btn.disabled=false; btn.textContent='🔍 Search';
+          var ranges=(d&&d.ranges)||[];
+          if(ranges.length){ ZCache.set(ck,ranges); _paintAlloc(ranges); return; }
+          if(cached&&cached.length){ _paintAlloc(cached); return; }
+          ASTATE.ranges=[]; list.innerHTML='<div class="empty" style="color:var(--red)">No available ranges for "'+escHtml(q)+'"</div>';
+        });
+      }; allocSearch._zw=1;
+    }
+
+    if(typeof showToast==='function' && !showToast._zw){
+      var _st=showToast;
+      window.showToast=function(t,kind){ try{ if(typeof t==='string' && /new SMS!?\s*$/.test(t) && kind==='success') return; }catch(e){} return _st.apply(this,arguments); };
+      showToast._zw=1;
+    }
+
+    try{
+      if(localStorage.getItem('app_session')){
+        var c=ZCache.get('sms', TTL_SMS);
+        var el=document.getElementById('smsBigNum');
+        var _bd=new Date().toISOString().slice(0,10);
+        if(c&&el&&(el.textContent||'').trim()==='0'&&c.day===_bd){
+          window._applySmsResult({ok:true,count:c.count,recent:c.recent||[]});
+        }
+        var rc=ZCache.get('ranges', TTL_RANGES);
+        if(rc&&rc.length&&typeof renderRanges==='function'){
+          var rp=document.getElementById('rangesPanel');
+          if(rp&&rp.style.display!=='none') renderRanges(rc);
+        }
+      }
+    }catch(e){}
+  }
+
+  if(document.readyState==='complete') install(); else window.addEventListener('load', install);
+  setTimeout(function(){ if(typeof _applySmsResult!=='undefined' && !_applySmsResult._zw) install(); }, 1200);
+})();
+</script>
+
+    <script>
+/* ═══ RANGES INSTANT-CACHE — gentle background refresh (respects TTL) ═══ */
+(function(){
+  function paintFromCache(){
+    try{
+      var q=((document.getElementById('rangesSearch')||{}).value||'').trim();
+      if(q) return;
+      var c=window.ZCache ? ZCache.get('ranges', 5*60*1000) : null;
+      if(c && c.length && typeof renderRanges==='function') renderRanges(c);
+    }catch(e){}
+  }
+  function install(){
+    if(typeof loadRanges!=='function' || loadRanges._zi) return;
+    var _lr=loadRanges;
+    window.loadRanges=function(force){
+      var r=_lr.apply(this,arguments);
+      paintFromCache();
+      return r;
+    };
+    loadRanges._zi=1;
+    setInterval(function(){
+      try{
+        var rp=document.getElementById('rangesPanel'), ms=document.getElementById('mainScreen');
+        if(rp && ms && ms.style.display!=='none' && rp.style.display!=='none' && !document.hidden && typeof SESSION!=='undefined' && SESSION){
+          loadRanges(false);
+        }
+      }catch(e){}
+    }, 90000);
+  }
+  if(document.readyState==='complete') install(); else window.addEventListener('load', install);
+  setTimeout(function(){ if(typeof loadRanges!=='undefined' && !loadRanges._zi) install(); }, 1300);
+})();
+</script>
+
+   <div id="featureRoot"></div>
+
+    <script>
+(function(){
+  function install(){
+    if(typeof loadLeaderboard!=='function'||loadLeaderboard._lbs)return;
+    var spin=document.getElementById('lbSpin');
+    var _llb=loadLeaderboard;
+    window.loadLeaderboard=function(){
+      if(spin)spin.classList.add('lb-loading');
+      var r=_llb.apply(this,arguments);
+      setTimeout(function(){if(spin)spin.classList.remove('lb-loading');},3000);
+      return r;
+    };
+    loadLeaderboard._lbs=1;
+    if(typeof renderLeaderboard==='function'&&!renderLeaderboard._lbs){
+      var _rlb=renderLeaderboard;
+      window.renderLeaderboard=function(){if(spin)spin.classList.remove('lb-loading');return _rlb.apply(this,arguments);};
+      renderLeaderboard._lbs=1;
+    }
+  }
+  if(document.readyState==='complete')install();else window.addEventListener('load',install);
+  setTimeout(function(){if(typeof loadLeaderboard!=='undefined'&&!loadLeaderboard._lbs)install();},1300);
+})();
+</script>
+
+    <script>
+function toggleAnInfo(){
+  var p=document.getElementById('anInfoPanel'); if(!p) return;
+  var b=document.querySelector('#addNumPage .an-info');
+  var open=p.style.display==='block';
+  p.style.display=open?'none':'block';
+  if(b) b.classList.toggle('on',!open);
+}
+window.toggleAnInfo=toggleAnInfo;
+</script>
+
+    <script>
+    /* ══ Universal loader + slow-load watchdog + numbers count sync ══ */
+    document.addEventListener('DOMContentLoaded',function(){
+      var ov=document.getElementById('loadingOverlay');
+      if(ov){var sp=ov.querySelector('.spinner');if(sp){var l=document.createElement('div');l.className='loader';sp.parentNode.replaceChild(l,sp);}}
+     var seen = {};
+        setInterval(function(){
+        ['loadingOverlay','lbComing'].forEach(function(id){
+          var el=document.getElementById(id);if(!el)return;
+          var vis=false;try{vis=getComputedStyle(el).display!=='none';}catch(e){}
+          if(vis){if(!seen[id])seen[id]=Date.now();
+            if(Date.now()-seen[id]>8000&&!el.querySelector('.zload-slow')){
+              var n=document.createElement('div');n.className='zload-slow';
+              n.textContent='Taking longer than usual — system busy, please wait…';el.appendChild(n);}
+          }else{seen[id]=null;var s=el.querySelector('.zload-slow');if(s)s.remove();}
+        });
+      },1000);
+      var tn=document.getElementById('totalNums'),nc=document.getElementById('numCount');
+      if(tn&&nc){setInterval(function(){var m=(tn.textContent||'').match(/\d+/);if(m)nc.textContent=m[0];},1000);}
+    });
+    </script>
+<script>
+window.addEventListener('DOMContentLoaded', function(){
+  if (typeof doLogout === 'function' && !doLogout._zl) {
+    var _o = doLogout;
+    window.doLogout = function(){
+      try{
+        var s = localStorage.getItem('app_session');
+        if (s) {
+          var payload = JSON.stringify({ session: s });
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/auth/logout', new Blob([payload], {type:'application/json'}));
+          } else {
+            fetch('/api/auth/logout', { method:'POST', keepalive:true, headers:{'Content-Type':'application/json'}, body: payload }).catch(function(){});
+          }
+        }
+      }catch(e){}
+      return _o.apply(this, arguments);
+    };
+    doLogout._zl = 1;
+  }
+});
+</script>
+
+<div class="notif-overlay" id="notifOverlay" onclick="if(event.target===this)closeNotifPanel()">
+  <div class="notif-panel">
+    <div class="notif-head">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <div class="notif-title">Notifications</div>
+      <button class="notif-x" onclick="closeNotifPanel()" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="notif-list" id="notifList"><div class="notif-empty">Loading…</div></div>
+    <div class="notif-compose" id="notifCompose" style="display:none">
+      <div class="nc-row">
+        <select id="ncTarget" onchange="document.getElementById('ncUserWrap').style.display=this.value==='user'?'flex':'none'">
+          <option value="*">All users</option>
+          <option value="user">Specific user</option>
+        </select>
+        <span id="ncUserWrap" style="display:none;flex:1"><input type="text" id="ncUser" placeholder="username"></span>
+        <select id="ncType" style="max-width:110px">
+          <option value="info">Info</option>
+          <option value="success">Success</option>
+          <option value="warn">Warning</option>
+          <option value="money">Money</option>
+        </select>
+      </div>
+      <div class="nc-row"><input type="text" id="ncTitle" placeholder="Title (optional)"></div>
+      <div class="nc-row"><textarea id="ncBody" placeholder="Write your announcement…"></textarea></div>
+      <div class="nc-row"><button class="nc-send" onclick="sendNotifMsg()">Send notification</button></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  function sess(){ return localStorage.getItem('app_session'); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function npost(url,body,cb){ fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({session:sess()},body||{}))}).then(function(r){return r.json().catch(function(){return{ok:false};});}).then(cb).catch(function(){cb({ok:false});}); }
+  var _items=[], _role='none';
+  function ago(iso){ if(!iso)return''; var s=Math.floor((Date.now()-new Date(iso).getTime())/1000); if(isNaN(s)||s<0)return''; if(s<60)return'just now'; var m=Math.floor(s/60); if(m<60)return m+'m ago'; var h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; }
+  var ICONS={
+    info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    success:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>',
+    warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+    money:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8"/><path d="M12 6v2M12 16v2"/></svg>'
+  };
+  function badge(n){ var b=document.getElementById('bellBadge'); if(!b)return; if(n>0){ b.style.display='flex'; b.textContent=n>9?'9+':String(n);} else b.style.display='none'; }
+  function render(){
+    var el=document.getElementById('notifList'); if(!el)return;
+    if(!_items.length){ el.innerHTML='<div class="notif-empty">No notifications yet</div>'; return; }
+    el.innerHTML=_items.map(function(n){
+      var extra='';
+      if(_role==='super'){
+        extra='<div class="ni-side"><div class="ni-read" title="'+esc((n.readBy||[]).join(', '))+'">'+(n.readBy||[]).length+' read</div>'
+          +'<button class="ni-del" data-del="'+n.id+'" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button></div>';
+      }
+      return '<div class="notif-item t-'+(n.type||'info')+(n.read?'':' unread')+'">'
+        +'<div class="ni-ic">'+(ICONS[n.type]||ICONS.info)+'</div>'
+        +'<div class="ni-body">'+(n.title?'<div class="ni-title">'+esc(n.title)+'</div>':'')
+        +'<div class="ni-text">'+esc(n.body)+'</div>'
+        +'<div class="ni-time">'+ago(n.at)+(n.by?' · by '+esc(n.by):'')+'</div></div>'+extra+'</div>';
+    }).join('');
+  }
+  function load(markRead){
+    npost('/api/notifs/list',{},function(d){
+      _role=(d&&d.role)||'none';
+      _items=(d&&d.notifs)||[];
+      badge(_items.filter(function(n){return !n.read;}).length);
+      render();
+      var comp=document.getElementById('notifCompose'); if(comp) comp.style.display=(_role==='super')?'block':'none';
+      if(markRead){
+        var ids=_items.filter(function(n){return !n.read;}).map(function(n){return n.id;});
+        if(ids.length) npost('/api/notifs/mark-read',{ids:ids},function(){ _items.forEach(function(n){n.read=true;}); badge(0); render(); });
+      }
+    });
+  }
+  window.openNotifPanel=function(){ var ov=document.getElementById('notifOverlay'); if(ov)ov.classList.add('show'); load(true); };
+  window.closeNotifPanel=function(){ var ov=document.getElementById('notifOverlay'); if(ov)ov.classList.remove('show'); };
+  window.sendNotifMsg=function(){
+    var target=document.getElementById('ncTarget').value;
+    if(target==='user'){ target=(document.getElementById('ncUser').value||'').trim(); if(!target){ toastMsg('Enter a username','red'); return; } }
+    var body=(document.getElementById('ncBody').value||'').trim();
+    if(!body){ toastMsg('Write a message first','red'); return; }
+    npost('/api/notifs/send',{target:target,type:document.getElementById('ncType').value,title:document.getElementById('ncTitle').value.trim(),body:body},function(d){
+      if(d&&d.ok){ document.getElementById('ncBody').value=''; document.getElementById('ncTitle').value=''; toastMsg('Notification sent','green'); load(false); }
+      else toastMsg((d&&d.error)||'Failed to send','red');
+    });
+  };
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-del]'); if(!b)return;
+    var id=b.getAttribute('data-del');
+    if(!confirm('Delete this notification for everyone?'))return;
+    npost('/api/notifs/delete',{id:id},function(d){ if(d&&d.ok){ toastMsg('Notification deleted','green'); load(false);} });
+  });
+  load(false);
+  setInterval(function(){ if(!document.hidden) load(false); },60000);
+})();
+</script>
+
+<script>
+/* ═══ ADD v4: free ranges auto-load · local filter · qty auto-tick ═══ */
+(function(){
+  var _all=[], _sel=null;
+  function ready(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded',fn); }
+  function sess(){ return localStorage.getItem('app_session'); }
+  function post(url,body,cb){ fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({session:sess()},body||{}))}).then(function(r){return r.json().catch(function(){return{ok:false};});}).then(cb).catch(function(){cb({ok:false});}); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function auLoadAll(){
+    var list=document.getElementById('auRangeList'); if(!list) return;
+    list.innerHTML='<div class="empty"><div class="spinner"></div></div>';
+    post('/api/alloc/free-ranges',{panel:'lamix'},function(d){
+      _all=(d&&d.ranges)||[];
+      var c=document.getElementById('auCount'); if(c) c.textContent=_all.length;
+      auFilter((document.getElementById('auSearch').value||'').trim());
+    });
+  }
+  function auFilter(q){ /* LOCAL only — no API */
+    q=(q||'').toLowerCase().replace(/\s+/g,'');
+    var list=_all.filter(function(r){ if(!q) return true; var hay=((r.country||'')+' '+(r.range||'')).toLowerCase().replace(/\s+/g,''); return hay.indexOf(q)>=0; });
+    var L=document.getElementById('auRangeList');
+    if(!list.length){ L.innerHTML='<div class="empty">No free ranges'+(q?' matching "'+esc(q)+'"':'')+'.</div>'; return; }
+    L.innerHTML=list.map(function(r,i){
+      return '<div class="alloc-range-item" data-i="'+i+'"><div><div class="alloc-range-name">'+(r.flag||'')+' '+esc(r.country)+' — '+esc(r.range)+'</div><div class="alloc-range-id">'+esc(r.id||'')+'</div></div><span class="avail-ok">'+r.available+' free</span></div>';
+    }).join('');
+    L._list=list;
+  }
+  function auAutoTick(){ /* qty → tick first N */
+    var n=Math.max(0,parseInt(document.getElementById('auQty').value)||0);
+    var cbs=document.querySelectorAll('#auNumsList .au-cb');
+    for(var i=0;i<cbs.length;i++) cbs[i].checked = i<n;
+  }
+  function auSelect(r){
+    _sel=r;
+    document.getElementById('auNumsWrap').style.display='block';
+    document.getElementById('auSelInfo').textContent=r.country+' — '+r.range+' · '+r.available+' free (empty client column)';
+    var L=document.getElementById('auNumsList'); L.innerHTML='<div class="empty"><div class="spinner"></div></div>';
+    post('/api/alloc/free-numbers',{panel:'lamix',rangeTitle:r.range},function(d){
+      var nums=(d&&d.numbers)||[];
+      if(!nums.length){ L.innerHTML='<div class="empty">No free numbers right now.</div>'; return; }
+      L.innerHTML=nums.map(function(n){ return '<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="au-cb" value="'+esc(n.id)+'"> '+esc(n.number)+'</label>'; }).join('');
+      var q=document.getElementById('auQty'); q.value=Math.min(parseInt(q.value)||5, nums.length); q.max=nums.length;
+      auAutoTick();
+    });
+  }
+  function auAllocate(){
+    if(!_sel) return;
+    var cbs=[].slice.call(document.querySelectorAll('.au-cb:checked'));
+    var qty=cbs.length;
+    if(!qty){ var R=document.getElementById('auResult'); R.style.display='block'; R.className='alloc-result err'; R.textContent='Enter how many numbers to allocate.'; return; }
+    var btn=document.getElementById('auBtn'); btn.disabled=true; btn.textContent='Allocating…';
+    var cs=document.getElementById('auClient');
+    post('/api/alloc/allocate',{ rangeId:_sel.id, rangeTitle:_sel.range, quantity:qty, payout:0.01, clientId:(cs&&cs.value)||'', payterm:'2' },function(d){
+      btn.disabled=false; btn.textContent='Allocate Numbers';
+      var R=document.getElementById('auResult'); R.style.display='block';
+      if(d&&d.limitReached){ R.className='alloc-result err'; R.textContent='🚫 '+d.message; return; }
+      if(d&&(d.allocatedReal>0||d.reason==='ALLOCATED_OK')){ R.className='alloc-result ok'; R.textContent='✅ Allocated '+(d.allocatedReal||qty)+' numbers.'; setTimeout(function(){ auLoadAll(); if(window.loadRanges) loadRanges(true); },900); }
+      else { R.className='alloc-result err'; R.textContent='⚠️ '+((d&&d.message)||(d&&d._server)||'Allocation failed.'); }
+    });
+  }
+  ready(function(){
+    post('/api/auth/role',{},function(d){
+      var role=(d&&d.role)||'none';
+      if(role==='super'||role==='admin'){
+        var f=document.getElementById('auClientField'); if(f) f.style.display='block';
+        post('/api/admin/my-clients',{},function(d){
+          var sel=document.getElementById('auClient'); if(!sel) return;
+          var opts=[]; ((d&&d.teams)||[]).forEach(function(t){ (t.clients||[]).forEach(function(c){ opts.push(c.username); }); });
+          sel.innerHTML=opts.map(function(u){ return '<option value="'+esc(u)+'">'+esc(u)+'</option>'; }).join('');
+        });
+      }
+    });
+    var si=document.getElementById('auSearch');
+    if(si) si.addEventListener('input',function(){ auFilter(this.value.trim()); });   // local, no API
+    var sb=document.getElementById('auSearchBtn'); if(sb) sb.addEventListener('click',function(){ auFilter(si.value.trim()); });
+    document.addEventListener('click',function(e){
+      var it=e.target.closest('#auRangeList .alloc-range-item'); if(!it) return;
+      var r=(document.getElementById('auRangeList')._list||[])[parseInt(it.getAttribute('data-i'))]; if(r) auSelect(r);
+    });
+    var q=document.getElementById('auQty'); if(q) q.addEventListener('input',auAutoTick);
+    document.addEventListener('change',function(e){ if(e.target.classList&&e.target.classList.contains('au-cb')){ var n=document.querySelectorAll('.au-cb:checked').length; document.getElementById('auQty').value=n; } });
+    var b=document.getElementById('auBtn'); if(b) b.addEventListener('click',auAllocate);
+    function hook(){ if(typeof window.bnSwitch==='function' && !window.bnSwitch._au){ var _b=window.bnSwitch; window.bnSwitch=function(p){ if(p==='add') setTimeout(auLoadAll,300); return _b.apply(this,arguments); }; window.bnSwitch._au=1; } }
+    ready(hook); setTimeout(hook,1500); setTimeout(hook,3000);
+    setTimeout(auLoadAll,600);
+  });
+})();
+</script>
+
+    <!-- 🚨 MAINTENANCE MODAL (Zamil SMS Paused) -->
+<div id="maintenanceModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:999999; justify-content:center; align-items:center; backdrop-filter:blur(8px);">
+  <div style="background:linear-gradient(145deg, #1e1e2f, #2a2a40); padding:40px 30px; border-radius:24px; max-width:480px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.6); border:1px solid rgba(255, 71, 87, 0.3); animation: maintFadeIn 0.3s ease-out;">
+    <div style="font-size:64px; margin-bottom:15px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">🛡️</div>
+    <h2 style="color:#ff4757; margin:0 0 15px 0; font-family:'Space Grotesk', sans-serif; font-weight:700; letter-spacing:0.5px;">System Temporarily Paused</h2>
+    <p id="maintMsgText" style="color:#dfe4ea; font-family:'Space Grotesk', sans-serif; line-height:1.7; font-size:15px; margin:0;">
+      Zamil SMS is temporarily down due to strict platform restrictions.
+    </p>
+    <div style="margin-top:25px; padding:15px; background:rgba(255,255,255,0.05); border-radius:12px; border:1px dashed rgba(255,255,255,0.1);">
+      <p style="color:#a4b0be; font-family:sans-serif; font-size:13px; margin:0;">
+        🔒 <strong style="color:#2ed573;">Your data and balances are 100% secure.</strong><br>We are working to restore safe access shortly.
+      </p>
+    </div>
+    <button onclick="document.getElementById('maintenanceModal').style.display='none'" style="margin-top:25px; padding:14px 40px; background:linear-gradient(135deg, #ff4757, #ff6b81); color:white; border:none; border-radius:12px; font-size:15px; cursor:pointer; font-weight:bold; box-shadow:0 4px 15px rgba(255, 71, 87, 0.4); transition:transform 0.1s;">Understood</button>
+  </div>
+</div>
+<style>
+  @keyframes maintFadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+</style>
+
+<script>
+/* 🚨 GLOBAL MAINTENANCE INTERCEPTOR 
+   Catches the 503 Maintenance signal from the backend and pops the modal */
+(function(){
+  const _originalFetch = window.fetch;
+  window.fetch = async function(...args) {
+    const response = await _originalFetch.apply(this, args);
+    try {
+      const clone = response.clone();
+      const data = await clone.json();
+      
+      // If backend sent the maintenance flag, show modal and halt
+      if (data && data.maintenance === true) {
+        const modal = document.getElementById('maintenanceModal');
+        const msgText = document.getElementById('maintMsgText');
+        if (msgText && data.message) msgText.textContent = data.message;
+        if (modal) modal.style.display = 'flex';
+        
+        // Return a fake halted response so the app doesn't crash trying to read empty data
+        return new Response(JSON.stringify({ ok: false, error: 'halt' }), { status: 503 });
+      }
+    } catch(e) { /* Not JSON, ignore */ }
+    return response;
+  };
+})();
+</script>
+
+    <script>
+/* ═══ ADD-ON — Live OTP nudge loop ═══ */
+(function(){
+  setInterval(function(){
+    if (document.hidden) return;
+    var s = localStorage.getItem('app_session');
+    if (!s) return;
+    // 1) ask the backend to pull anything new from LaMix (server-side gate keeps this LaMix-safe no matter how many tabs are open)
+    fetch('/api/boats/cdr/nudge', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ session: s })
+    }).catch(function(){});
+    // 2) refresh what's on screen from whatever's now in Supabase — reuses everything you've already built
+    if (typeof silentSmsRefresh === 'function') silentSmsRefresh(true);
+  }, 2000);
+})();
+</script>
+    
+<div id="dorPage" style="display:none">
+  <style>
+    .dor-hdr{position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;background:linear-gradient(180deg,rgba(8,145,178,.09),rgba(8,145,178,.03));border-bottom:1px solid var(--border);backdrop-filter:blur(6px)}
+    .dor-hdr-left{display:flex;align-items:center;gap:9px;min-width:0}
+    .dor-hdr-title{font-weight:800;font-size:1.08rem;letter-spacing:-.01em}
+    .dor-hdr-sub{font-size:.7rem;color:var(--muted);font-weight:600;white-space:nowrap}
+    .dor-refresh{display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-family:inherit;font-size:.8rem;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.06);transition:transform .12s}
+    .dor-refresh:active{transform:scale(.95)}
+    .dor-refresh.spin svg{animation:dorSpin .8s linear infinite}
+    @keyframes dorSpin{to{transform:rotate(360deg)}}
+    .dor-body{padding:10px 10px 16px}
+    #dorList .rsms{margin-bottom:10px}
+  </style>
+  <div class="dor-hdr">
+    <div class="dor-hdr-left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" style="color:var(--text);flex-shrink:0"><path d="M5 20v-6M10 20V6M15 20v-9M20 20V4"/></svg>
+      <div class="dor-hdr-title">OTP Report</div>
+      <div class="dor-hdr-sub">Global · today</div>
+    </div>
+    <button type="button" class="dor-refresh" id="dorRefreshBtn" onclick="loadDOR(true)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Refresh</button>
+  </div>
+  <div class="dor-body">
+    <div id="dorLoading" style="display:none;padding:26px;text-align:center"><div class="spinner"></div></div>
+    <div id="dorList"></div>
+  </div>
+</div>
+</body>
+    
+</html>
